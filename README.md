@@ -6,6 +6,40 @@ A high-performance Python backend framework built on the Codon compiler.
 
 TurboX leverages Codon to compile Python code to machine code, delivering performance comparable to Rust and C++ without the overhead of traditional Python interpreters.
 
+### Vision & Goals
+
+TurboX aims to be a **high-speed, flexible backend framework** with:
+
+- ⚡ **Native Performance**: Compiled to machine code via Codon - no Python interpreter overhead
+- 🤖 **First-class AI Tooling Support**: Built-in support for MCP (Model Context Protocol) servers and AI integrations
+- 🔧 **Pythonic API**: Familiar Flask/FastAPI-like syntax that compiles to native code
+- 🚀 **Parallel by Default**: Leverage Codon's threading and parallelism without GIL limitations
+- 🎯 **Modern Web Standards**: Built for microservices, APIs, and high-performance backends
+
+### Current State
+
+**Advantages:**
+- ✅ Compiles to native executables (no Python runtime needed)
+- ✅ C-level socket performance via FFI
+- ✅ Clean, Pythonic routing API
+- ✅ Small binary size (~200KB for minimal server)
+- ✅ Fast startup time compared to interpreted Python
+
+**Current Limitations:**
+- ⚠️ Early development - API may change
+- ⚠️ Limited HTTP features (no query params, POST body parsing yet)
+- ⚠️ Single-threaded request handling (concurrency coming soon)
+- ⚠️ No middleware system yet
+- ⚠️ Pure Python code in `turbox/` won't compile with Codon yet (uses Python's socket module)
+
+**Coming Soon:**
+- 🔄 Request/response parsing (query params, JSON, form data)
+- 🔄 Concurrent request handling with Codon's parallelism
+- 🔄 MCP server integration for AI tooling
+- 🔄 WebSocket support
+- 🔄 Middleware system
+- 🔄 Full Codon compilation of framework code
+
 ## Prerequisites
 
 - [Codon compiler](https://github.com/exaloop/codon) installed and available in your PATH
