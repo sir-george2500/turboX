@@ -17,7 +17,8 @@ class TurboX:
                 self.routes[(method, path)] = func
             return func
         return decorator
-    
+
+    # parse the method and the path 
     def _parse_request(self, request: bytes) -> Tuple[str, str]:
         lines = request.decode("utf-8").split("\r\n")
         if not lines:
@@ -31,7 +32,8 @@ class TurboX:
         path = request_line[1]
         
         return method, path
-    
+
+    # build up the http response  
     def _build_response(self, body: str, status: int = 200) -> bytes:
         status_messages = {
             200: "OK",
@@ -48,7 +50,8 @@ class TurboX:
         response += body
         
         return response.encode("utf-8")
-    
+   
+    # handle request I am betting on this to do the Job now 
     def _handle_request(self, request: bytes) -> bytes:
         method, path = self._parse_request(request)
         
@@ -65,7 +68,8 @@ class TurboX:
                 return self._build_response(f"Internal Server Error: {str(e)}", 500)
         else:
             return self._build_response("Not Found", 404)
-    
+     
+    # run the server
     def run(self):
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

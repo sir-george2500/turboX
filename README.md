@@ -1,4 +1,4 @@
-# TurboX
+# TurboX ⚡
 
 A high-performance Python backend framework built on the Codon compiler.
 
