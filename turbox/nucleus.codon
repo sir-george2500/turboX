@@ -1,0 +1,95 @@
+# Minimal HTTP server using Codon's C FFI for sockets
+# This demonstrates the basic building blocks needed for TurboX
+
+from C import (
+    socket(i32, i32, i32) -> i32,
+    setsockopt(i32, i32, i32, Ptr[byte], u32) -> i32,
+    bind(i32, Ptr[byte], u32) -> i32,
+    listen(i32, i32) -> i32,
+    accept(i32, Ptr[byte], Ptr[u32]) -> i32,
+    recv(i32, Ptr[byte], int, i32) -> int,
+    send(i32, Ptr[byte], int, i32) -> int,
+    close(i32) -> i32,
+    htons(u16) -> u16,
+    inet_addr(Ptr[byte]) -> u32,
+    perror(Ptr[byte])
+)
+
+# Constants
+AF_INET = i32(2)
+SOCK_STREAM = i32(1)
+SOL_SOCKET = i32(1)
+SO_REUSEADDR = i32(2)
+
+# Simplified sockaddr_in struct (16 bytes total)
+@tuple
+class sockaddr_in:
+    sin_family: i16      # 2 bytes
+    sin_port: u16        # 2 bytes
+    sin_addr: u32        # 4 bytes
+    sin_zero: u64        # 8 bytes padding
+
+def create_tcp_server(port: int) -> i32:
+    sockfd = socket(AF_INET, SOCK_STREAM, i32(0))
+    if sockfd < i32(0):
+        perror("socket".c_str())
+        return i32(-1)
+    
+    # Enable SO_REUSEADDR
+    optval = i32(1)
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, Ptr[byte](__ptr__(optval)), u32(4))
+    
+    # Setup address struct
+    addr = sockaddr_in(
+        i16(AF_INET),
+        htons(u16(port)),
+        inet_addr("127.0.0.1".c_str()),
+        u64(0)
+    )
+    
+    if bind(sockfd, Ptr[byte](__ptr__(addr)), u32(16)) < i32(0):
+        perror("bind".c_str())
+        close(sockfd)
+        return i32(-1)
+    
+    if listen(sockfd, i32(5)) < i32(0):
+        perror("listen".c_str())
+        close(sockfd)
+        return i32(-1)
+    
+    return sockfd
+
+def run_server():
+    port = 8000
+    sockfd = create_tcp_server(port)
+    
+    if sockfd < i32(0):
+        print("Failed to create server")
+        return
+    
+    print(f"TurboX server running on http://127.0.0.1:{port}")
+    print("Press Ctrl+C to stop")
+    
+    response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 13\r\nConnection: close\r\n\r\nHello, World!"
+    
+    buffer = Ptr[byte](4096)
+    addr_len = u32(16)
+    
+    while True:
+        client_fd = accept(sockfd, cobj(), Ptr[u32](__ptr__(addr_len)))
+        
+        if client_fd < i32(0):
+            continue
+        
+        # Receive request
+        bytes_received = recv(client_fd, buffer, 4096, i32(0))
+        
+        if bytes_received > 0:
+            # Send response
+            send(client_fd, response.ptr, len(response), i32(0))
+        
+        close(client_fd)
+    
+    close(sockfd)
+
+run_server()

@@ -1,0 +1,18 @@
+from turbox.app import TurboX, Request
+
+app = TurboX()
+
+@app.route("/")
+def hello(request: Request) -> str:
+    return "Hello, World!"
+
+@app.route("/ping")
+def ping(request: Request) -> str:
+    return "pong"
+
+@app.route("/greet")
+def greet(request: Request) -> str:
+    name = request.query_params.get('name', 'Guest')
+    return f"Hello, {name}!"
+
+app.run()
