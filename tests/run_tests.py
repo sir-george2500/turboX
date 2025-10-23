@@ -9,7 +9,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Import test modules
-from tests.build import test_route_extractor, test_transpiler, test_validator
+from tests.build import test_route_extractor, test_transpiler, test_validator, test_computed_routes
+from tests import test_app_runtime
 
 
 def main():
@@ -29,6 +30,12 @@ def main():
     
     print("\n📦 Running Validator Tests...")
     results.append(("Validator", test_validator.run_all_tests()))
+    
+    print("\n📦 Running Runtime Tests...")
+    results.append(("Runtime", test_app_runtime.run_all_tests()))
+    
+    print("\n📦 Running Computed Routes Tests...")
+    results.append(("Computed Routes", test_computed_routes.run_all_tests()))
     
     # Summary
     print("\n" + "="*70)

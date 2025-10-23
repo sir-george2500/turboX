@@ -205,9 +205,10 @@ app2 = TurboX()
 
 **TODO:**
 - [x] Track app instance names (not just hardcoded 'app')
-- [ ] Support @app.get(), @app.post(), etc.
+- [x] Support @app.get(), @app.post(), etc.
 - [ ] Validate decorator arguments properly
-- [ ] Error on unsupported patterns (computed routes, etc.)
+- [x] Computed routes support (constants, concatenation, f-strings)
+- [x] Error on unsupported patterns (computed routes, etc.)
 - [x] Scope analysis for multi-app files (verifies decorator matches TurboX app)
 - [x] Filter out nested attributes like @app.router.route()
 

@@ -35,6 +35,7 @@ class TurboX:
         self.routes: Dict[Tuple[str, str], Callable] = {}
     
     def route(self, path: str, methods: list[str] | None = None):
+        """Generic route decorator supporting multiple HTTP methods"""
         if methods is None:
             methods = ["GET"]
         
@@ -43,6 +44,34 @@ class TurboX:
                 self.routes[(method, path)] = func
             return func
         return decorator
+    
+    def get(self, path: str):
+        """Decorator for GET requests"""
+        return self.route(path, methods=["GET"])
+    
+    def post(self, path: str):
+        """Decorator for POST requests"""
+        return self.route(path, methods=["POST"])
+    
+    def put(self, path: str):
+        """Decorator for PUT requests"""
+        return self.route(path, methods=["PUT"])
+    
+    def delete(self, path: str):
+        """Decorator for DELETE requests"""
+        return self.route(path, methods=["DELETE"])
+    
+    def patch(self, path: str):
+        """Decorator for PATCH requests"""
+        return self.route(path, methods=["PATCH"])
+    
+    def head(self, path: str):
+        """Decorator for HEAD requests"""
+        return self.route(path, methods=["HEAD"])
+    
+    def options(self, path: str):
+        """Decorator for OPTIONS requests"""
+        return self.route(path, methods=["OPTIONS"])
 
     def _parse_request(self, request: bytes) -> Optional[Request]:
         try:

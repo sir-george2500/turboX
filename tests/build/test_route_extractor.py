@@ -246,13 +246,231 @@ def normal_handler(request):
     print("✅ test_nested_attribute_ignored passed")
 
 
+def test_get_decorator():
+    """Test @app.get() decorator - Problem #2"""
+    code = """
+from turbox import TurboX
+
+app = TurboX()
+
+@app.get("/users")
+def get_users(request):
+    return "Users list"
+"""
+    
+    tree = ast.parse(code)
+    extractor = RouteExtractor()
+    extractor.visit(tree)
+    
+    assert len(extractor.routes) == 1
+    assert extractor.routes[0]['path'] == '/users'
+    assert extractor.routes[0]['handler'] == 'get_users'
+    assert extractor.routes[0]['methods'] == ['GET']
+    
+    print("✅ test_get_decorator passed - Problem #2 FIXED!")
+
+
+def test_post_decorator():
+    """Test @app.post() decorator - Problem #2"""
+    code = """
+from turbox import TurboX
+
+app = TurboX()
+
+@app.post("/users")
+def create_user(request):
+    return "User created"
+"""
+    
+    tree = ast.parse(code)
+    extractor = RouteExtractor()
+    extractor.visit(tree)
+    
+    assert len(extractor.routes) == 1
+    assert extractor.routes[0]['path'] == '/users'
+    assert extractor.routes[0]['methods'] == ['POST']
+    
+    print("✅ test_post_decorator passed")
+
+
+def test_put_delete_patch_decorators():
+    """Test @app.put(), @app.delete(), @app.patch() decorators"""
+    code = """
+from turbox import TurboX
+
+app = TurboX()
+
+@app.put("/users/<id>")
+def update_user(request):
+    return "User updated"
+
+@app.delete("/users/<id>")
+def delete_user(request):
+    return "User deleted"
+
+@app.patch("/users/<id>")
+def patch_user(request):
+    return "User patched"
+"""
+    
+    tree = ast.parse(code)
+    extractor = RouteExtractor()
+    extractor.visit(tree)
+    
+    assert len(extractor.routes) == 3
+    
+    # Find each route
+    put_route = next(r for r in extractor.routes if r['handler'] == 'update_user')
+    delete_route = next(r for r in extractor.routes if r['handler'] == 'delete_user')
+    patch_route = next(r for r in extractor.routes if r['handler'] == 'patch_user')
+    
+    assert put_route['methods'] == ['PUT']
+    assert delete_route['methods'] == ['DELETE']
+    assert patch_route['methods'] == ['PATCH']
+    
+    print("✅ test_put_delete_patch_decorators passed")
+
+
+def test_mixed_decorators():
+    """Test mix of @app.route(), @app.get(), @app.post()"""
+    code = """
+from turbox import TurboX
+
+app = TurboX()
+
+@app.route("/")
+def index(request):
+    return "Index"
+
+@app.get("/users")
+def list_users(request):
+    return "Users"
+
+@app.post("/users")
+def create_user(request):
+    return "Created"
+
+@app.route("/api", methods=['PUT', 'PATCH'])
+def api_handler(request):
+    return "API"
+"""
+    
+    tree = ast.parse(code)
+    extractor = RouteExtractor()
+    extractor.visit(tree)
+    
+    assert len(extractor.routes) == 4
+    
+    # Verify each route
+    index = next(r for r in extractor.routes if r['handler'] == 'index')
+    assert index['methods'] == ['GET']  # Default for @app.route()
+    
+    list_users = next(r for r in extractor.routes if r['handler'] == 'list_users')
+    assert list_users['methods'] == ['GET']
+    
+    create_user = next(r for r in extractor.routes if r['handler'] == 'create_user')
+    assert create_user['methods'] == ['POST']
+    
+    api = next(r for r in extractor.routes if r['handler'] == 'api_handler')
+    assert 'PUT' in api['methods']
+    assert 'PATCH' in api['methods']
+    
+    print("✅ test_mixed_decorators passed")
+
+
+def test_all_http_methods():
+    """Test all supported HTTP method decorators"""
+    code = """
+from turbox import TurboX
+
+app = TurboX()
+
+@app.get("/get")
+def get_handler(request):
+    return "GET"
+
+@app.post("/post")
+def post_handler(request):
+    return "POST"
+
+@app.put("/put")
+def put_handler(request):
+    return "PUT"
+
+@app.delete("/delete")
+def delete_handler(request):
+    return "DELETE"
+
+@app.patch("/patch")
+def patch_handler(request):
+    return "PATCH"
+
+@app.head("/head")
+def head_handler(request):
+    return "HEAD"
+
+@app.options("/options")
+def options_handler(request):
+    return "OPTIONS"
+"""
+    
+    tree = ast.parse(code)
+    extractor = RouteExtractor()
+    extractor.visit(tree)
+    
+    assert len(extractor.routes) == 7
+    
+    # Verify each method
+    methods_found = {route['methods'][0] for route in extractor.routes}
+    expected_methods = {'GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'}
+    
+    assert methods_found == expected_methods
+    
+    print("✅ test_all_http_methods passed")
+
+
+def test_wrong_app_with_http_methods():
+    """Test that HTTP method decorators from other apps are ignored"""
+    code = """
+from turbox import TurboX
+from other_framework import OtherApp
+
+app = TurboX()
+other = OtherApp()
+
+@app.get("/turbox")
+def turbox_handler(request):
+    return "TurboX"
+
+@other.get("/other")
+def other_handler(request):
+    return "Other"
+
+@other.post("/other")
+def other_post(request):
+    return "Other POST"
+"""
+    
+    tree = ast.parse(code)
+    extractor = RouteExtractor()
+    extractor.visit(tree)
+    
+    # Should only find the TurboX route
+    assert len(extractor.routes) == 1
+    assert extractor.routes[0]['path'] == '/turbox'
+    assert extractor.routes[0]['handler'] == 'turbox_handler'
+    
+    print("✅ test_wrong_app_with_http_methods passed")
+
+
 def run_all_tests():
     """Run all test cases"""
     print("\n" + "="*60)
-    print("Running RouteExtractor Tests - Problem #1 Fix")
+    print("Running RouteExtractor Tests - Problems #1 & #2")
     print("="*60 + "\n")
     
     tests = [
+        # Problem #1 tests
         test_single_app_basic,
         test_different_app_name,
         test_wrong_app_ignored,
@@ -261,6 +479,13 @@ def run_all_tests():
         test_no_turbox_app,
         test_route_without_call,
         test_nested_attribute_ignored,
+        # Problem #2 tests (new)
+        test_get_decorator,
+        test_post_decorator,
+        test_put_delete_patch_decorators,
+        test_mixed_decorators,
+        test_all_http_methods,
+        test_wrong_app_with_http_methods,
     ]
     
     failed = 0
@@ -278,6 +503,7 @@ def run_all_tests():
     if failed == 0:
         print(f"✅ All {len(tests)} tests passed!")
         print("Problem #1 (Wrong app verification) is SOLVED! 🎉")
+        print("Problem #2 (HTTP method decorators) is SOLVED! 🎉")
     else:
         print(f"❌ {failed}/{len(tests)} tests failed")
     print("="*60 + "\n")

@@ -48,6 +48,7 @@ class AppValidator:
         self._validate_return_types()
         self._validate_unsupported_features()
         self._validate_imports()
+        self._detect_dynamic_routes()
         
         return self.errors, self.warnings
     
@@ -242,6 +243,94 @@ class AppValidator:
                             line=func_node.lineno,
                             file=self.source_file
                         ))
+    
+    def _detect_dynamic_routes(self):
+        """Detect and attempt to resolve dynamic route paths"""
+        # This catches routes that weren't extracted (e.g., in loops, conditionals)
+        # We'll scan for decorators that might have dynamic paths
+        
+        for node in ast.walk(self.tree):
+            if isinstance(node, ast.FunctionDef):
+                for decorator in node.decorator_list:
+                    if isinstance(decorator, ast.Call):
+                        if isinstance(decorator.func, ast.Attribute):
+                            # Check if this looks like a route decorator
+                            if decorator.func.attr in ['route', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options']:
+                                if decorator.args:
+                                    path_arg = decorator.args[0]
+                                    
+                                    # Check if path is non-constant
+                                    if not isinstance(path_arg, ast.Constant):
+                                        # Try to evaluate it
+                                        try:
+                                            # Attempt constant evaluation
+                                            evaluated = self._try_evaluate_expression(path_arg)
+                                            if evaluated is None:
+                                                # Could not evaluate - warn user
+                                                self.warnings.append(ValidationWarning(
+                                                    message=f"Dynamic route path in '{node.name}' - path cannot be determined at build time",
+                                                    line=node.lineno,
+                                                    file=self.source_file
+                                                ))
+                                        except:
+                                            self.warnings.append(ValidationWarning(
+                                                message=f"Complex route path in '{node.name}' - may not work correctly",
+                                                line=node.lineno,
+                                                file=self.source_file
+                                            ))
+    
+    def _try_evaluate_expression(self, node: ast.AST) -> Optional[str]:
+        """Try to evaluate a constant expression
+        
+        Supports:
+        - String constants
+        - String concatenation with +
+        - F-strings with constant values
+        - Name lookups of module-level constants
+        """
+        # Simple constant
+        if isinstance(node, ast.Constant):
+            return str(node.value)
+        
+        # Binary operation (string concatenation)
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+            left = self._try_evaluate_expression(node.left)
+            right = self._try_evaluate_expression(node.right)
+            if left is not None and right is not None:
+                return left + right
+            return None
+        
+        # F-string (JoinedStr)
+        if isinstance(node, ast.JoinedStr):
+            result = []
+            for value in node.values:
+                if isinstance(value, ast.Constant):
+                    result.append(str(value.value))
+                elif isinstance(value, ast.FormattedValue):
+                    # Try to evaluate the formatted value
+                    val = self._try_evaluate_expression(value.value)
+                    if val is not None:
+                        result.append(val)
+                    else:
+                        return None
+            return ''.join(result)
+        
+        # Name lookup - try to find constant assignment
+        if isinstance(node, ast.Name):
+            return self._lookup_constant(node.id)
+        
+        return None
+    
+    def _lookup_constant(self, name: str) -> Optional[str]:
+        """Look up a module-level constant"""
+        for node in ast.walk(self.tree):
+            if isinstance(node, ast.Assign):
+                # Check if this is a simple assignment like: VAR = "value"
+                if node.targets and isinstance(node.targets[0], ast.Name):
+                    if node.targets[0].id == name:
+                        if isinstance(node.value, ast.Constant):
+                            return str(node.value.value)
+        return None
     
     def _get_code_context(self, line_num: int, context_lines: int = 2) -> str:
         """Get source code context around a line"""
