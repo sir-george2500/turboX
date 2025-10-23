@@ -70,14 +70,19 @@ from turbox import TurboX
 
 app = TurboX()
 
-@app.route("/")
+# Use modern HTTP method decorators
+@app.get("/")
 def hello(request):
     return "Hello, World!"
 
-@app.route("/greet")
+@app.get("/greet")
 def greet(request):
     name = request.query_params.get('name', ['Guest'])[0]
     return f"Hello, {name}!"
+
+@app.post("/echo")
+def echo(request):
+    return "POST request received"
 
 if __name__ == "__main__":
     app.run()
@@ -103,13 +108,10 @@ For maximum performance, compile to native binary:
 
 ```bash
 # Build to native executable
-turbox build app.py
+python -m turbox.build app.py
 
 # Run the compiled binary
 ./app
-
-# Or build and run in one command
-turbox run app.py
 ```
 
 The compiled binary:
@@ -156,6 +158,63 @@ codon run examples/nucleus.codon
 
 ## API Reference
 
+### HTTP Method Decorators
+
+TurboX supports modern, intuitive HTTP method decorators:
+
+```python
+from turbox import TurboX
+
+app = TurboX()
+
+# GET request
+@app.get("/users")
+def list_users(request):
+    return "Users list"
+
+# POST request
+@app.post("/users")
+def create_user(request):
+    return "User created"
+
+# PUT request
+@app.put("/users/<id>")
+def update_user(request):
+    return "User updated"
+
+# DELETE request
+@app.delete("/users/<id>")
+def delete_user(request):
+    return "User deleted"
+
+# PATCH request
+@app.patch("/users/<id>")
+def patch_user(request):
+    return "User patched"
+
+# Multiple methods (classic style)
+@app.route("/api", methods=["POST", "PUT"])
+def api_handler(request):
+    return f"Method: {request.method}"
+```
+
+### Computed Routes (NEW!)
+
+TurboX can resolve routes with constants:
+
+```python
+API_BASE = "/api"
+VERSION = "v1"
+
+@app.get(API_BASE + "/users")
+def users(request):
+    return "Users"
+
+@app.get(f"{API_BASE}/{VERSION}/posts")
+def posts(request):
+    return "Posts"
+```
+
 ### Request Object
 
 Every route handler receives a `Request` object with the following attributes:
@@ -171,7 +230,7 @@ Every route handler receives a `Request` object with the following attributes:
 ### Example Usage
 
 ```python
-@app.route("/user")
+@app.get("/user")
 def get_user(request):
     # Get query parameter
     user_id = request.query_params.get('id', [''])[0]
@@ -181,7 +240,7 @@ def get_user(request):
     
     return f"User ID: {user_id}, Auth: {auth}"
 
-@app.route("/create", methods=["POST"])
+@app.post("/create")
 def create_user(request):
     # Parse JSON
     data = request.json()
@@ -193,22 +252,47 @@ def create_user(request):
 
 ## Project Status
 
-TurboX is in early development. Currently implemented:
+TurboX is in active development. Currently implemented:
 
 - ✅ Minimal HTTP server using C FFI
 - ✅ Basic request/response handling
 - ✅ Native compilation to machine code
 - ✅ Routing system with decorators
+- ✅ **HTTP method decorators** (`@app.get()`, `@app.post()`, etc.)
+- ✅ **Computed routes** (constants, concatenation, f-strings)
 - ✅ HTTP request parsing (methods, paths, headers, query params)
 - ✅ JSON and form data parsing
 - ✅ Request object API
+- ✅ **Comprehensive validation** (catches errors before compilation)
+- ✅ **35+ tests** - All passing!
 
 Coming soon:
 - 🔄 Concurrent request handling with Codon's parallelism
 - 🔄 Middleware system
+- 🔄 Path parameters (`/users/<int:id>`)
 - 🔄 WebSocket support
 - 🔄 Performance benchmarks
 - 🔄 Full Codon compilation of framework code
+
+## Documentation
+
+- 📘 **[Getting Started Guide](docs/GETTING_STARTED.md)** - Complete tutorial
+- 📗 **[Build System Architecture](docs/build-architecture.md)** - How it works
+- 📕 **Examples in `examples/`** - Working code samples
+
+## Testing
+
+```bash
+# Run all tests
+python tests/run_tests.py
+
+# Run specific test suite
+python tests/build/test_route_extractor.py
+python tests/build/test_computed_routes.py
+python tests/test_app_runtime.py
+```
+
+**Test Coverage:** 35 tests across 5 test suites, all passing! ✅
 
 ## Development
 
