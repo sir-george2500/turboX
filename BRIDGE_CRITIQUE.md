@@ -49,12 +49,12 @@ def build(python_file: str):
 ```
 
 **TODO:**
-- [ ] Implement validation phase
-- [ ] Check function signatures match `(request: Request) -> str`
-- [ ] Detect unsupported Python stdlib usage (json, requests, etc.)
-- [ ] Validate decorator syntax
-- [ ] Check for type hints
-- [ ] Warn on common mistakes
+- [x] Implement validation phase
+- [x] Check function signatures match `(request: Request) -> str`
+- [x] Detect unsupported Python stdlib usage (json, requests, etc.)
+- [x] Validate decorator syntax
+- [x] Check for type hints
+- [x] Warn on common mistakes
 
 ---
 
@@ -204,11 +204,12 @@ app2 = TurboX()
 - Detect unsupported patterns early with clear errors
 
 **TODO:**
-- [ ] Track app instance names (not just hardcoded 'app')
+- [x] Track app instance names (not just hardcoded 'app')
 - [ ] Support @app.get(), @app.post(), etc.
 - [ ] Validate decorator arguments properly
 - [ ] Error on unsupported patterns (computed routes, etc.)
-- [ ] Scope analysis for multi-app files
+- [x] Scope analysis for multi-app files (verifies decorator matches TurboX app)
+- [x] Filter out nested attributes like @app.router.route()
 
 ---
 
