@@ -2,7 +2,6 @@
   <img src="https://raw.githubusercontent.com/sir-george2500/custome_images/main/images/logotX.png" alt="TurboX Logo" width="400"/>
 </div>
 
-# TurboX ⚡
 
 A high-performance Python backend framework built on the Codon compiler.
 
