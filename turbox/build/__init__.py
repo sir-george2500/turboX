@@ -18,10 +18,10 @@ from typing import Optional
 
 from ..validator import validate_app, print_validation_results
 from .extractor import extract_routes
-from .transpiler import generate_codon_server
+from .transpiler import generate_codon_server, generate_codon_server_modular
 from .compiler import compile_to_binary, check_codon_available
 
-__all__ = ['build', 'extract_routes', 'generate_codon_server', 'compile_to_binary']
+__all__ = ['build', 'extract_routes', 'generate_codon_server', 'generate_codon_server_modular', 'compile_to_binary']
 
 
 def build(python_file: str, output_binary: Optional[str] = None) -> None:
@@ -83,9 +83,10 @@ def build(python_file: str, output_binary: Optional[str] = None) -> None:
     elif warnings and not errors:
         print("✅ Validation passed with warnings")
     
-    # Phase 3: Generate Codon server
+    # Phase 3: Generate Codon server (using modular nucleus!)
     generated_file = python_file.replace('.py', '_generated.codon')
-    generate_codon_server(routes, generated_file)
+    print(f"\n⚙️  Generating Codon server code...")
+    generate_codon_server_modular(routes, generated_file)
     
     # Phase 4: Compile with Codon
     if output_binary is None:

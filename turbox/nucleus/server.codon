@@ -1,0 +1,137 @@
+# Nucleus Server Module
+# Core HTTP server with C FFI socket operations
+
+from C import (
+    socket(i32, i32, i32) -> i32,
+    setsockopt(i32, i32, i32, Ptr[byte], u32) -> i32,
+    bind(i32, Ptr[byte], u32) -> i32,
+    listen(i32, i32) -> i32,
+    accept(i32, Ptr[byte], Ptr[u32]) -> i32,
+    recv(i32, Ptr[byte], int, i32) -> int,
+    send(i32, Ptr[byte], int, i32) -> int,
+    close(i32) -> i32,
+    htons(u16) -> u16,
+    inet_addr(Ptr[byte]) -> u32,
+    perror(Ptr[byte])
+)
+
+from .request import Request, parse_request
+from .response import build_response
+
+# Socket constants
+AF_INET = i32(2)
+SOCK_STREAM = i32(1)
+SOL_SOCKET = i32(1)
+SO_REUSEADDR = i32(2)
+
+@tuple
+class sockaddr_in:
+    """C sockaddr_in structure for socket addressing"""
+    sin_family: i16      # Address family (AF_INET)
+    sin_port: u16        # Port in network byte order
+    sin_addr: u32        # IP address
+    sin_zero: u64        # Padding to match C struct size
+
+
+class TurboX:
+    """TurboX HTTP Server
+    
+    High-performance HTTP server using C FFI for socket operations.
+    Compiled to native code for maximum performance.
+    """
+    host: str
+    port: int
+    routes: Dict[str, Callable[[Request], str]]
+    
+    def __init__(self, host: str = '127.0.0.1', port: int = 8000):
+        """Initialize TurboX server
+        
+        Args:
+            host: Host address to bind to (default: 127.0.0.1)
+            port: Port to listen on (default: 8000)
+        """
+        self.host = host
+        self.port = port
+        self.routes = Dict[str, Callable[[Request], str]]()
+    
+    def handle_request(self, request_data: str) -> str:
+        """Handle incoming HTTP request
+        
+        Args:
+            request_data: Raw HTTP request as string
+        
+        Returns:
+            HTTP response as string
+        """
+        try:
+            req = parse_request(request_data)
+            route_key = f'{req.method}:{req.path}'
+            
+            if route_key in self.routes:
+                handler = self.routes[route_key]
+                result = handler(req)
+                return build_response(result, 200)
+            else:
+                return build_response('Not Found', 404)
+        except:
+            return build_response('Internal Server Error', 500)
+    
+    def run(self):
+        """Start the HTTP server
+        
+        Creates socket, binds to address, and enters main request loop.
+        Blocks until interrupted (Ctrl+C).
+        """
+        # Create socket
+        sockfd = socket(AF_INET, SOCK_STREAM, i32(0))
+        if sockfd < i32(0):
+            perror('socket'.c_str())
+            return
+        
+        # Enable SO_REUSEADDR to allow quick restart
+        optval = i32(1)
+        setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, Ptr[byte](__ptr__(optval)), u32(4))
+        
+        # Bind to address
+        addr = sockaddr_in(
+            i16(AF_INET),
+            htons(u16(self.port)),
+            inet_addr(self.host.c_str()),
+            u64(0)
+        )
+        
+        if bind(sockfd, Ptr[byte](__ptr__(addr)), u32(16)) < i32(0):
+            perror('bind'.c_str())
+            close(sockfd)
+            return
+        
+        # Listen for connections
+        if listen(sockfd, i32(5)) < i32(0):
+            perror('listen'.c_str())
+            close(sockfd)
+            return
+        
+        print(f'TurboX server running on http://{self.host}:{self.port}')
+        print('Press Ctrl+C to stop')
+        
+        buffer = Ptr[byte](4096)
+        addr_len = u32(16)
+        
+        # Main request loop
+        while True:
+            client_fd = accept(sockfd, cobj(), Ptr[u32](__ptr__(addr_len)))
+            
+            if client_fd < i32(0):
+                continue
+            
+            # Receive request
+            bytes_received = recv(client_fd, buffer, 4096, i32(0))
+            
+            if bytes_received > 0:
+                request_str = str(buffer, bytes_received)
+                response = self.handle_request(request_str)
+                send(client_fd, response.ptr, len(response), i32(0))
+            
+            close(client_fd)
+        
+        close(sockfd)

@@ -1,0 +1,29 @@
+# Nucleus Response Module
+# Handles HTTP response building
+
+def build_response(body: str, status: int = 200) -> str:
+    """Build HTTP response with proper headers
+    
+    Args:
+        body: Response body content
+        status: HTTP status code (default: 200)
+    
+    Returns:
+        Complete HTTP response as string
+    """
+    status_msg = 'OK'
+    if status == 404:
+        status_msg = 'Not Found'
+    elif status == 500:
+        status_msg = 'Internal Server Error'
+    elif status == 400:
+        status_msg = 'Bad Request'
+    
+    response = f'HTTP/1.1 {status} {status_msg}\\r\\n'
+    response += 'Content-Type: text/plain\\r\\n'
+    response += f'Content-Length: {len(body)}\\r\\n'
+    response += 'Connection: close\\r\\n'
+    response += '\\r\\n'
+    response += body
+    
+    return response

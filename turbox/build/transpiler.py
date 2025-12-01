@@ -2,10 +2,12 @@
 """
 Code Transpiler - Generates Codon code from Python routes
 
+UPDATED: Now imports from nucleus module instead of embedding template!
+
 Responsible for:
 - Transpiling Python handler functions to Codon
-- Generating the complete Nucleus server code
-- Managing code templates
+- Generating minimal glue code (imports + route registration)
+- Using nucleus module for server core
 """
 import ast
 from typing import List, Dict
@@ -58,10 +60,78 @@ def {handler_name}(request: Request) -> str:
 """
 
 
+def generate_codon_server_modular(routes: List[Dict], output_file: str):
+    """Generate a Codon server using nucleus module
+    
+    This reads the nucleus module code from turbox/nucleus/__init__.codon
+    and includes it in the generated file. This approach:
+    - Keeps nucleus code separate and maintainable
+    - Avoids Codon import complexity
+    - Enables nucleus to be tested independently
+    
+    Args:
+        routes: List of route dictionaries
+        output_file: Path to output .codon file
+    """
+    handler_code = []
+    route_registrations = []
+    
+    for route in routes:
+        # Generate handler function
+        handler_code.append(generate_handler_code(route))
+        
+        # Generate route registration
+        for method in route['methods']:
+            route_registrations.append(
+                f"app.routes['{method}:{route['path']}'] = {route['handler']}"
+            )
+    
+    # Read nucleus code from the nucleus module
+    import os
+    from pathlib import Path
+    
+    turbox_dir = Path(__file__).parent.parent
+    nucleus_file = turbox_dir / 'nucleus' / '__init__.codon'
+    
+    with open(nucleus_file, 'r') as f:
+        nucleus_code = f.read()
+    
+    # Build server code with nucleus included
+    codon_code = f"""# Auto-generated TurboX application
+# Generated from Python routes - compiled to native code
+# Uses modular Nucleus (included from turbox/nucleus/__init__.codon)
+
+# ========== Nucleus Server Core (from turbox/nucleus/__init__.codon) ==========
+{nucleus_code}
+
+# Generated handler functions
+{''.join(handler_code)}
+
+# Application setup
+app = TurboX()
+
+# Register routes
+{chr(10).join(route_registrations)}
+
+# Run server
+app.run()
+"""
+    
+    with open(output_file, 'w') as f:
+        f.write(codon_code)
+    
+    print(f"✨ Generated modular server: {output_file}")
+    print(f"   Using nucleus from: {nucleus_file}")
+
+
+# Keep old function for backward compatibility during transition
 def generate_nucleus_template() -> str:
     """Generate the Nucleus server template
     
-    TODO: Extract this to separate Codon module (Problem #3)
+    DEPRECATED: Use generate_codon_server_modular() instead
+    
+    This embeds the full server code as a template.
+    Kept for backward compatibility during transition.
     
     Returns:
         Nucleus server template code
@@ -123,7 +193,7 @@ def parse_query_string(query: str) -> Dict[str, str]:
     return params
 
 def parse_request(request_data: str) -> Request:
-    lines = request_data.split('\\r\\n')
+    lines = request_data.split('\\\\r\\\\n')
     
     # Parse request line
     request_line = lines[0].split(' ')
@@ -156,7 +226,7 @@ def parse_request(request_data: str) -> Request:
     body = ''
     if body_start < len(lines):
         body_lines = lines[body_start:]
-        body = '\\r\\n'.join(body_lines)
+        body = '\\\\r\\\\n'.join(body_lines)
     
     return Request(method, path, query_params, headers, body)
 
@@ -169,11 +239,11 @@ def build_response(body: str, status: int = 200) -> str:
     elif status == 400:
         status_msg = 'Bad Request'
     
-    response = f'HTTP/1.1 {{status}} {{status_msg}}\\r\\n'
-    response += 'Content-Type: text/plain\\r\\n'
-    response += f'Content-Length: {{len(body)}}\\r\\n'
-    response += 'Connection: close\\r\\n'
-    response += '\\r\\n'
+    response = f'HTTP/1.1 {{status}} {{status_msg}}\\\\r\\\\n'
+    response += 'Content-Type: text/plain\\\\r\\\\n'
+    response += f'Content-Length: {{len(body)}}\\\\r\\\\n'
+    response += 'Connection: close\\\\r\\\\n'
+    response += '\\\\r\\\\n'
     response += body
     
     return response
@@ -260,6 +330,11 @@ class TurboX:
 
 def generate_codon_server(routes: List[Dict], output_file: str):
     """Generate a complete Nucleus server with embedded routes
+    
+    DEPRECATED: Use generate_codon_server_modular() for new approach
+    
+    This is kept for backward compatibility during transition.
+    It embeds the full server template (old approach).
     
     Args:
         routes: List of route dictionaries
